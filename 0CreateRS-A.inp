@@ -14,7 +14,7 @@ C*** **************************************
 
 /POST26
 
-INPUTSTPS =      4100  ! Input Accel/Disp Time Steps
+INPUTSTPS =      4200  ! Input Accel/Disp Time Steps
 DELTA_T   =     0.005  ! Input Accel Time Increment
 NodeNum   =     '508723'
 
