@@ -1,0 +1,163 @@
+/BATCH
+/CLEAR,NOSTART 
+
+C*** **************************************
+C*** Author: David F. Betancourt, P.E.
+C*** Date: 04/27/2012
+C*** Notes: The following APDL script produces 
+C*** ISRS at four nodes due to unidirectional 
+C*** motion.  This script can be revised for 
+C*** multidirectional motion if TH rst contains 
+C*** such results 
+C*** **************************************
+
+C*** **************************************
+C*** Resume Geometry
+C*** **************************************
+/PREP7
+RESUME,RCB_THx,db
+
+C*** **************************************
+C*** Post-Process Results to get RS
+C*** **************************************
+
+/POST26
+FILE,RCB_THx,RST         ! RST file containing TH results
+NUMVAR,200
+LINES,5000
+
+C*** **************************************
+C*** USER input
+C*** **************************************
+INTESTPS    =     4096   ! Number of integration time steps
+DELTA_T     =     0.005  ! Integration time step
+SPECDAMP    =     0.05   ! Spectral damping
+SPECTNAME   =    'Validation-Xdir'
+
+C*** Enter node numbers for ISRS
+!
+NOD1      =     512579   ! PCCV X1 @ 117.75
+NOD2      =     512731   ! PCCV X1 @ 159.75
+NOD3      =     513006   ! PCCV X1 @ 195.50
+NOD4      =     510196   ! PSW  X1 @ 114.00
+NOD5      =     508006   ! PSW  X1 @ 156.00
+NOD6      =     508711   ! PSW  X1 @ 191.00
+!
+C*** **************************************
+!!Dimension arrays
+
+NUMFREQS  =    118      ! Number of frequencies using NRC spacing
+
+*DIM,FREQS,ARRAY,NUMFREQS
+*DIM,FREQNUM,ARRAY,NUMFREQS
+*DIM,TIMET,ARRAY,NUMFREQS
+*DIM,ISRS_X_NOD1,ARRAY,NUMFREQS
+*DIM,ISRS_X_NOD2,ARRAY,NUMFREQS
+*DIM,ISRS_X_NOD3,ARRAY,NUMFREQS
+*DIM,ISRS_X_NOD4,ARRAY,NUMFREQS
+*DIM,ISRS_X_NOD5,ARRAY,NUMFREQS
+*DIM,ISRS_X_NOD6,ARRAY,NUMFREQS
+
+C*** **************************************
+!!Get nodal ABSOLUTE acceleration time-history
+!
+!!Time-history analysis output is already absolute
+!!since motion is applied as displacement at base
+!!in case acceleration is relative, remember to add
+!!the relative nodal acceleration to the input motion
+!!using the ADD command
+
+NSOL,5,NOD1,ACC,X,NOD1ACX
+NSOL,6,NOD2,ACC,X,NOD2ACX
+NSOL,7,NOD3,ACC,X,NOD3ACX
+NSOL,8,NOD4,ACC,X,NOD4ACX
+NSOL,9,NOD5,ACC,X,NOD5ACX
+NSOL,10,NOD6,ACC,X,NOD6ACX
+
+*DIM,NOD1ACX,ARRAY,INTESTPS
+*DIM,NOD2ACX,ARRAY,INTESTPS
+*DIM,NOD3ACX,ARRAY,INTESTPS
+*DIM,NOD4ACX,ARRAY,INTESTPS
+*DIM,NOD5ACX,ARRAY,INTESTPS
+*DIM,NOD6ACX,ARRAY,INTESTPS
+
+VGET,NOD1ACX(1),5      ! Move variable into array parameter 
+VGET,NOD2ACX(1),6
+VGET,NOD3ACX(1),7 
+VGET,NOD4ACX(1),8
+VGET,NOD5ACX(1),9
+VGET,NOD6ACX(1),10
+
+
+C********************************************************************
+!!Fill frequency array
+C********************************************************************
+!!CREATE RESPONSE SPECTRUM ACCELERATION LINEAR VS FREQUENCY LOG 
+!!Freq range with guidance of NRC Reg Guide 1.122
+!
+!FILLDATA,2,1,30,1,0.10,0.10   !  FROM  0.1  to 3.0   AT 0.10Hz     ! IR =2 
+!FILLDATA,2,31,34,1,3.15,0.15  !  FROM  3.0  to 3.6   AT 0.15Hz
+!FILLDATA,2,35,41,1,3.80,0.20  !  FROM  3.6  to 5.0   AT 0.20Hz
+!FILLDATA,2,42,53,1,5.25,0.25  !  FROM  5.0  to 8.0   AT 0.25Hz
+!FILLDATA,2,54,67,1,8.50,0.50  !  FROM  8.0  to 15.0  AT 0.50Hz
+!FILLDATA,2,68,70,1,16.00,1.00 !  FROM  15.0 to 18.0  AT 1.00Hz
+!FILLDATA,2,71,72,1,20.00,2.00 !  FROM  18.0 to 22.0  AT 2.00Hz
+!FILLDATA,2,73,98,1,25.00,3.00 !  FROM  22.0 to 100.0 AT 3.00Hz
+!VGET,FREQS(1),2               ! Move variable 2 to FREQS array -- 98freq points
+
+*VREAD,FREQS(1),0Frequencies,dat
+(E15.6)
+VPUT,FREQS(1),2               ! Move array parameter into Post26 variable, IR=2
+*VFILL,TIMET(1),RAMP,0.0,DELTA_T
+*VFILL,FREQNUM(1),RAMP,1.0,1.0
+VPUT,TIMET(1),1               ! Move array parameter into Post26 variable, IR=1
+VPUT,FREQNUM(1),3             ! Move array parameter into Post26 variable, IR=3
+C********************************************************************
+!!Generate Acceleration Response Spectra using ANSYS v14 with acceleration time history
+!!Nodal acceleration TH is the absolute acceleration 
+C********************************************************************
+RESP,11,2,5,3,SPECDAMP,DELTA_T, , ,1      ! ISRS-X for NOD1
+RESP,12,2,6,3,SPECDAMP,DELTA_T, , ,1      ! ISRS-X for NOD2
+RESP,13,2,7,3,SPECDAMP,DELTA_T, , ,1      ! ISRS-X for NOD3
+RESP,14,2,8,3,SPECDAMP,DELTA_T, , ,1      ! ISRS-X for NOD4
+RESP,15,2,9,3,SPECDAMP,DELTA_T, , ,1      ! ISRS-X for NOD5
+RESP,16,2,10,3,SPECDAMP,DELTA_T, , ,1     ! ISRS-X for NOD4
+! 
+!PRVAR,2,14                                ! Display Freq vs Accel 
+
+ !!Store ISRS in arrays        
+*DO,i,1,118
+ *GET,ISRS_X_NOD1(i),VARI,11,RTIME,TIMET(i),
+ *GET,ISRS_X_NOD2(i),VARI,12,RTIME,TIMET(i),
+ *GET,ISRS_X_NOD3(i),VARI,13,RTIME,TIMET(i),
+ *GET,ISRS_X_NOD4(i),VARI,14,RTIME,TIMET(i),
+ *GET,ISRS_X_NOD5(i),VARI,15,RTIME,TIMET(i),
+ *GET,ISRS_X_NOD6(i),VARI,16,RTIME,TIMET(i),
+*ENDDO
+
+C*** ***************************
+C*** Write Results
+C*** ***************************
+
+/POST1
+
+*CFOPEN,RS_Node_%SPECTNAME%,dat
+*VWRITE
+('   FREQUENCY        ND01          ND02          ND03          ND04           ND05           ND06')
+*VWRITE,'FREQ', NOD1,   NOD2,   NOD3,   NOD4,   NOD5,           NOD6
+(7(F12.0))
+ *DO,i,1,118
+  F1 = FREQS(i)
+  A1 = ISRS_X_NOD1(i)*(1/32.17)   ! Spectral acceleration in g units
+  A2 = ISRS_X_NOD2(i)*(1/32.17)
+  A3 = ISRS_X_NOD3(i)*(1/32.17)
+  A4 = ISRS_X_NOD4(i)*(1/32.17)
+  A5 = ISRS_X_NOD5(i)*(1/32.17)
+  A6 = ISRS_X_NOD6(i)*(1/32.17)
+  *VWRITE,F1,A1,A2,A3,A4,A5,A6
+  (7E15.7)
+ *ENDDO 
+*CFCLOSE
+
+FINISH
+/EOF
